@@ -21,6 +21,7 @@ public class Snake extends MIDlet {
     private class SnakeGame extends Canvas implements Runnable {
         private final int CELL = 10;
         private final int MAX = 750;
+        private Random random = new Random();
         private int[] sx = new int[MAX];
         private int[] sy = new int[MAX];
         private int length, foodX, foodY, dx, dy, score;
@@ -54,17 +55,22 @@ public class Snake extends MIDlet {
         private void createFood() {
             int cols = getWidth() / CELL;
             int rows = getHeight() / CELL;
+
             boolean valid;
+
             do {
                 valid = true;
-                foodX = (int)(Math.random() * cols) * CELL;
-                foodY = (int)(Math.random() * rows) * CELL;
+
+                foodX = (random.nextInt() & 0x7fffffff) % cols * CELL;
+                foodY = (random.nextInt() & 0x7fffffff) % rows * CELL;
+
                 for (int i = 0; i < length; i++) {
                     if (sx[i] == foodX && sy[i] == foodY) {
                         valid = false;
                         break;
                     }
                 }
+
             } while (!valid);
         }
 
