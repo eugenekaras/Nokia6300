@@ -1,5 +1,6 @@
 import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
+import java.util.Random;
 
 public class Snake extends MIDlet {
     private SnakeGame game;
