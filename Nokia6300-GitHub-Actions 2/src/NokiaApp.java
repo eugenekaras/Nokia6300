@@ -1,134 +1,270 @@
 import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
 
-public class NokiaApp extends MIDlet {
-    private Display display;
-    private NokiaScreen screen;
+public class Snake extends MIDlet {
+
+    private SnakeGame game;
 
     public void startApp() {
-        display = Display.getDisplay(this);
-        screen = new NokiaScreen();
-        display.setCurrent(screen);
+        if (game == null) {
+            game = new SnakeGame();
+        }
+        Display.getDisplay(this).setCurrent(game);
     }
 
     public void pauseApp() {
+        game.stopGame();
     }
 
     public void destroyApp(boolean unconditional) {
+        game.stopGame();
     }
 
-    private class NokiaScreen extends Canvas {
-        private int selected = 0;
-        private String[] items = {
-            "Start",
-            "About",
-            "Settings",
-            "Exit"
-        };
+    private class SnakeGame extends Canvas implements Runnable {
 
-        protected void paint(Graphics g) {
+        private final int CELL = 10;
+        private final int MAX = 750;
+
+        private int[] sx = new int[MAX];
+        private int[] sy = new int[MAX];
+
+        private int length;
+        private int foodX, foodY;
+        private int dx, dy;
+        private int score;
+
+        private boolean running;
+        private boolean started;
+        private boolean gameOver;
+
+        private Thread thread;
+
+        SnakeGame() {
+            setFullScreenMode(true);
+            resetGame();
+        }
+
+        private void resetGame() {
+            length = 5;
+            score = 0;
+
+            dx = CELL;
+            dy = 0;
+
             int w = getWidth();
             int h = getHeight();
 
-            g.setColor(15, 25, 40);
+            sx[0] = (w / CELL / 2) * CELL;
+            sy[0] = (h / CELL / 2) * CELL;
+
+            for (int i = 1; i < length; i++) {
+                sx[i] = sx[0] - i * CELL;
+                sy[i] = sy[0];
+            }
+
+            started = false;
+            gameOver = false;
+
+            createFood();
+            repaint();
+        }
+
+        private void createFood() {
+            int cols = getWidth() / CELL;
+            int rows = getHeight() / CELL;
+
+            boolean valid;
+
+            do {
+                valid = true;
+
+                foodX = (int)(Math.random() * cols) * CELL;
+                foodY = (int)(Math.random() * rows) * CELL;
+
+                for (int i = 0; i < length; i++) {
+                    if (sx[i] == foodX && sy[i] == foodY) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+            } while (!valid);
+        }
+
+        public void run() {
+            while (running) {
+                if (started && !gameOver) {
+                    updateGame();
+                }
+
+                repaint();
+
+                try {
+                    Thread.sleep(150);
+                } catch (Exception e) {
+                }
+            }
+        }
+
+        private void updateGame() {
+
+            int nx = sx[0] + dx;
+            int ny = sy[0] + dy;
+            if (nx < 0  ny < 0 
+                nx >= getWidth()  ny >= getHeight()) {
+                endGame();
+                return;
+            }
+
+            boolean eating = (nx == foodX && ny == foodY);
+
+            for (int i = 0; i < length; i++) {
+                if (nx == sx[i] && ny == sy[i]) {
+                    if (i == length - 1 && !eating) {
+                        continue;
+                    }
+                    endGame();
+                    return;
+                }
+            }
+
+            if (eating && length < MAX) {
+                length++;
+                score += 10;
+                createFood();
+            }
+
+            for (int i = length - 1; i > 0; i--) {
+                sx[i] = sx[i - 1];
+                sy[i] = sy[i - 1];
+            }
+
+            sx[0] = nx;
+            sy[0] = ny;
+        }
+
+        private void endGame() {
+            gameOver = true;
+            started = false;
+        }
+
+        protected void paint(Graphics g) {
+
+            int w = getWidth();
+            int h = getHeight();
+
+            g.setColor(0, 0, 0);
             g.fillRect(0, 0, w, h);
 
-            g.setColor(0, 110, 170);
-            g.fillRect(0, 0, w, 48);
+            // Score bar
+            g.setColor(0, 100, 0);
+            g.fillRect(0, 0, w, 25);
 
             g.setColor(255, 255, 255);
-            g.setFont(Font.getFont(
-                Font.FACE_SYSTEM,
-                Font.STYLE_BOLD,
-                Font.SIZE_LARGE
-            ));
             g.drawString(
-                "NOKIA 6300",
-                w / 2,
-                12,
-                Graphics.TOP | Graphics.HCENTER
+                "SCORE: " + score,
+                5, 5,
+                Graphics.TOP | Graphics.LEFT
             );
 
-            g.setFont(Font.getDefaultFont());
-            for (int i = 0; i < items.length; i++) {
-                int y = 75 + i * 45;
-                if (selected == i) {
-                    g.setColor(0, 130, 210);
-                    g.fillRoundRect(15, y, w - 30, 36, 8, 8);
+            // Food
+            g.setColor(255, 50, 50);
+            g.fillArc(foodX, foodY, CELL, CELL, 0, 360);
+
+            // Snake
+            for (int i = 0; i < length; i++) {
+
+                if (i == 0) {
+                    g.setColor(100, 255, 100);
+                } else {
+                    g.setColor(0, 180, 0);
                 }
-                g.setColor(255, 255, 255);
-                g.drawString(
-                    items[i],
-                    30,
-                    y + 10,
-                    Graphics.TOP | Graphics.LEFT
+
+                g.fillRect(
+                    sx[i] + 1,
+                    sy[i] + 1,
+                    CELL - 2,
+                    CELL - 2
                 );
             }
 
-            g.setColor(180, 180, 180);
-            g.drawLine(0, h - 27, w, h - 27);
-            g.drawString(
-                "Select",
-                5,
-                h - 22,
-                Graphics.TOP | Graphics.LEFT
-            );
-            g.drawString(
-                "Exit",
-                w - 5,
-                h - 22,
-                Graphics.TOP | Graphics.RIGHT
-            );
+            // Start and game-over screens
+            if (!started) {
+
+                g.setColor(255, 255, 255);
+
+                String message = gameOver ?
+                    "GAME OVER" : "SNAKE GAME";
+
+                g.drawString(
+                    message,
+                    w / 2,
+                    h / 2 - 25,
+                    Graphics.HCENTER | Graphics.TOP
+                );
+
+                g.drawString(
+                    gameOver ? "5 - RESTART" : "5 - START",
+                    w / 2,
+                    h / 2 + 5,
+                    Graphics.HCENTER | Graphics.TOP
+                );
+            }
         }
 
         protected void keyPressed(int keyCode) {
+
             int action = getGameAction(keyCode);
 
-            if (action == UP) {
-                selected--;
-                if (selected < 0) {
-                    selected = items.length - 1;
-                }
-            } else if (action == DOWN) {
-                selected++;
-                if (selected >= items.length) {
-                    selected = 0;
-                }
-            } else if (action == FIRE) {
-                if (selected == 3) {
-                    notifyDestroyed();
-                    return;
+            if (keyCode == KEY_NUM5  action == FIRE) {
+
+                if (gameOver) {
+                    resetGame();
                 }
 
-                Alert alert;
-                if (selected == 0) {
-                    alert = new Alert(
-                        "Welcome",
-                        "Your Nokia Java application works!",
-                        null,
-                        AlertType.INFO
-                    );
-                } else if (selected == 1) {
-                    alert = new Alert(
-                        "About",
-                        "Created with Java ME for Nokia 6300.",
-                        null,
-                        AlertType.INFO
-                    );
-                } else {
-                    alert = new Alert(
-                        "Settings",
-                        "Version 1.0",
-                        null,
-                        AlertType.INFO
-                    );
+                started = true;
+
+                if (thread == null  !thread.isAlive()) {
+                    running = true;
+                    thread = new Thread(this);
+                    thread.start();
                 }
 
-                alert.setTimeout(Alert.FOREVER);
-                Display.getDisplay(NokiaApp.this).setCurrent(alert, this);
+                repaint();
+                return;
             }
 
-            repaint();
+            if (action == UP  keyCode == KEY_NUM2) {
+                if (dy == 0) {
+                    dx = 0;
+                    dy = -CELL;
+                }
+            }
+
+            else if (action == DOWN  keyCode == KEY_NUM8) {
+                if (dy == 0) {
+                    dx = 0;
+                    dy = CELL;
+                }
+            }
+
+            else if (action == LEFT  keyCode == KEY_NUM4) {
+                if (dx == 0) {
+                    dx = -CELL;
+                    dy = 0;
+                }
+            }
+
+            else if (action == RIGHT || keyCode == KEY_NUM6) {
+                if (dx == 0) {
+                    dx = CELL;
+                    dy = 0;
+                }
+            }
+        }
+
+        void stopGame() {
+            running = false;
         }
     }
 }
