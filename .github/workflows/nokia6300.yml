@@ -1,0 +1,73 @@
+name: Build Nokia 6300 Java ME app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download compiler and Java ME libraries
+        run: |
+          mkdir -p build/lib build/classes dist
+
+          curl -fL https://repo.maven.apache.org/maven2/org/eclipse/jdt/ecj/3.26.0/ecj-3.26.0.jar -o build/lib/ecj.jar
+
+          curl -fL https://repo.maven.apache.org/maven2/org/microemu/cldcapi10/2.0.4/cldcapi10-2.0.4.jar -o build/lib/cldcapi10.jar
+
+          curl -fL https://repo.maven.apache.org/maven2/org/microemu/midpapi20/2.0.4/midpapi20-2.0.4.jar -o build/lib/midpapi20.jar
+
+      - name: Compile
+        run: |
+          SRC=$(find . -path '*/src/NokiaApp.java' -print -quit)
+          test -n "$SRC"
+
+          java -jar build/lib/ecj.jar \
+            -source 1.3 -target cldc1.1 \
+            -bootclasspath build/lib/cldcapi10.jar:build/lib/midpapi20.jar \
+            -d build/classes "$SRC"
+
+      - name: Package JAR and JAD
+        run: |
+          printf '%s\n' \
+            'Manifest-Version: 1.0' \
+            'MIDlet-Name: NokiaApp' \
+            'MIDlet-Version: 1.0.0' \
+            'MIDlet-Vendor: Custom' \
+            'MIDlet-1: NokiaApp,,NokiaApp' \
+            'MicroEdition-Profile: MIDP-2.0' \
+            'MicroEdition-Configuration: CLDC-1.1' \
+            '' > build/MANIFEST.MF
+
+          jar cfm dist/NokiaApp.jar build/MANIFEST.MF -C build/classes .
+
+          SIZE=$(wc -c < dist/NokiaApp.jar)
+
+          cat > dist/NokiaApp.jad <<EOF
+          MIDlet-Name: NokiaApp
+          MIDlet-Version: 1.0.0
+          MIDlet-Vendor: Custom
+          MIDlet-1: NokiaApp,,NokiaApp
+          MIDlet-Jar-URL: NokiaApp.jar
+          MIDlet-Jar-Size: $SIZE
+          MicroEdition-Profile: MIDP-2.0
+          MicroEdition-Configuration: CLDC-1.1
+          EOF
+
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nokia6300-installation-files
+          path: dist/*
