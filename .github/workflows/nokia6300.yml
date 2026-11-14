@@ -1,4 +1,4 @@
-name: Build Snake for Nokia 6300
+name: Build Tetris for Nokia 6300
 
 on:
   workflow_dispatch:
@@ -25,11 +25,11 @@ jobs:
           curl -fL https://repo.maven.apache.org/maven2/org/microemu/cldcapi10/2.0.4/cldcapi10-2.0.4.jar -o build/lib/cldcapi10.jar
           curl -fL https://repo.maven.apache.org/maven2/org/microemu/midpapi20/2.0.4/midpapi20-2.0.4.jar -o build/lib/midpapi20.jar
 
-      - name: Compile Snake
+      - name: Compile Tetris
         run: |
-          SRC=$(find . -type f -name 'Snake.java' -not -path './build/*' -print -quit)
+          SRC=$(find . -type f -name 'Tetris.java' -not -path './build/*' -print -quit)
           if [ -z "$SRC" ]; then
-            echo "Snake.java not found. Add it as src/Snake.java."
+            echo "Tetris.java not found. Add it as src/Tetris.java."
             exit 1
           fi
           java -jar build/lib/ecj.jar \
@@ -39,34 +39,36 @@ jobs:
 
       - name: Package JAR and JAD
         run: |
-          printf '%s\\n' \
+          printf '%s\n' \
             'Manifest-Version: 1.0' \
-            'MIDlet-Name: Snake' \
+            'MIDlet-Name: Tetris' \
             'MIDlet-Version: 1.0.0' \
             'MIDlet-Vendor: Custom' \
-            'MIDlet-1: Snake,,Snake' \
+            'MIDlet-1: Tetris,,Tetris' \
             'MicroEdition-Profile: MIDP-2.0' \
             'MicroEdition-Configuration: CLDC-1.1' \
             '' > build/MANIFEST.MF
-          jar cfm dist/Snake.jar build/MANIFEST.MF -C build/classes .
-          SIZE=$(wc -c < dist/Snake.jar | tr -d ' ')
-          cat > dist/Snake.jad <<EOF
-          MIDlet-Name: Snake
+
+          jar cfm dist/Tetris.jar build/MANIFEST.MF -C build/classes .
+
+          SIZE=$(wc -c < dist/Tetris.jar | tr -d ' ')
+
+          cat > dist/Tetris.jad <<EOF
+          MIDlet-Name: Tetris
           MIDlet-Version: 1.0.0
           MIDlet-Vendor: Custom
-          MIDlet-1: Snake,,Snake
-          MIDlet-Jar-URL: Snake.jar
+          MIDlet-1: Tetris,,Tetris
+          MIDlet-Jar-URL: Tetris.jar
           MIDlet-Jar-Size: $SIZE
           MicroEdition-Profile: MIDP-2.0
           MicroEdition-Configuration: CLDC-1.1
           EOF
 
-      - name: Upload Snake installation files
+      - name: Upload Tetris installation files
         uses: actions/upload-artifact@v4
         with:
-          name: Snake6300-installation-files
+          name: Tetris6300-installation-files
           path: |
-            dist/Snake.jar
-            dist/Snake.jad
+            dist/Tetris.jar
+            dist/Tetris.jad
           if-no-files-found: error
-
